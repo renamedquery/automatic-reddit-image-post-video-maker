@@ -6,6 +6,7 @@ parser = argparse.ArgumentParser(description = 'A program that makes a video on 
 parser.add_argument('--subreddit', dest = 'subreddit', required = True, help = 'The subreddit that the video will be made on. EXAMPLE: "aviation".')
 parser.add_argument('--limit', dest = 'limit', required = True, help = 'The amount of posts that will be in the video. EXAMPLE: "10".')
 parser.add_argument('--sortby', dest = 'sortby', required = True, help = 'What page the posts will be pulled from. Options are ["hot", "new", "rising", "controversial", "top"].')
+parser.add_argument('--allow-nsfw', dest = 'allow_nsfw', required = False, help = 'Whether or not nsfw content will be allowed in the video. Options are ["y", "n"].')
 try:
     arguments = parser.parse_args()
 except:
@@ -92,6 +93,7 @@ class program:
         sortby = 'hot' #the page that the program will sort for the posts by
         subreddit = 'aviation' #the subreddit that the program is fetching posts from
         limit = 10 #the max amount of posts that the program will fetch
+        allowNsfw = False #whether or not to allow nsfw content
         normalAsciiChars = [*list(string.ascii_lowercase), *list(string.digits), *list(string.punctuation), *list(string.whitespace)] #for making stuff printable so that it doesnt raise any unicode encode/decode errors
     class reddit:
         reddit = None #the praw session
@@ -159,6 +161,13 @@ try:
 except ValueError:
     program.utils.log('Got an invalid arument for "--limit". Value must be an integer. Quitting.')
     exit()
+program.presets.allowNsfw = False
+if (arguments.allow_nsfw):
+    if (arguments.allow_nsfw.lower() in ['y', 'n']):
+        if (arguments.allow_nsfw.lower() == 'y'):
+            program.presets.allowNsfw = True
+    else:
+        program.utils.log('Got an invalid argument for  "--allow-nsfw". Value must be in ["y", "n"].')
 
 #display the parsed arguments
 program.utils.log('Program starting with sortby={}'.format(program.presets.sortby))
@@ -174,7 +183,7 @@ program.utils.log('PRAW bot was successfully initialized.')
 
 #get the posts from the subreddit
 program.utils.log('Getting {} posts from the {} section of r/{}'.format(program.presets.limit, program.presets.sortby, program.presets.subreddit))
-imagePathsForRedditPosts = program.reddit.downloadImagePostsFromReddit(program.presets.subreddit, program.presets.limit, False, program.presets.sortby)
+imagePathsForRedditPosts = program.reddit.downloadImagePostsFromReddit(program.presets.subreddit, program.presets.limit, program.presets.allowNsfw, program.presets.sortby)
 program.utils.log('Got {} posts from the subreddit.'.format(len(imagePathsForRedditPosts)))
 
 #edit the image files
