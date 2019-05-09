@@ -1,6 +1,6 @@
 #TODO: comment stuff on this program so its "readable".
 
-import argparse, sys, string, time, os, shutil, praw, urllib.request, gtts, moviepy.editor, imageio
+import argparse, sys, string, time, os, shutil, praw, urllib.request, gtts, moviepy.editor, PIL.Image, PIL.ImageDraw, PIL.ImageFont
 
 parser = argparse.ArgumentParser(description = 'A program that makes a video on posts from a subreddit.')
 parser.add_argument('--subreddit', dest = 'subreddit', required = True, help = 'The subreddit that the video will be made on. EXAMPLE: "aviation".')
@@ -109,7 +109,26 @@ class program:
                         urllib.request.urlretrieve(submission.url, filePath)
             return paths
     class images:
-        None
+        def makeImageFrame(imagePath, postData, bgcolor = '#ffffff', fgcolor = '#000000', dimensions = [1920, 1080]) -> str:
+            #make it so that it only displays the first 50-70 characters of the title and then cuts it off with "..."
+            mainImage = PIL.Image.new('RGB', (dimensions[0], dimensions[1]), bgcolor)
+            font = PIL.ImageFont.truetype('./default-font.ttf', int(dimensions[1] / 30))
+            draw = PIL.ImageDraw.Draw(mainImage)
+            title = 'Title: {}'.format(postData.title)
+            textSize = draw.textsize(title, font = font)
+            textCoords = [int(mainImage.size[0] - textSize[0]), 0]
+            draw.text(textCoords, title, fgcolor, font = font)
+            author = 'Author: u/{}'.format(postData.author)
+            textSize2 = draw.textsize(author, font = font)
+            textCoords2 = [int(mainImage.size[0] - textSize2[0]), int(textSize[1])]
+            draw.text(textCoords2, author, fgcolor, font = font)
+            memeImage = PIL.Image.open(imagePath)
+            aspectRatio = memeImage.size[1] / memeImage.size[0]
+            memeImageSize = [int(dimensions[1] / aspectRatio), int(dimensions[1])]
+            memeImage = memeImage.resize(memeImageSize, PIL.Image.ANTIALIAS)
+            mainImage.paste(memeImage, (0, 0))
+            mainImage.save(imagePath)
+            return imagePath
     class tts:
         def makeTTSFile(text, language = 'en') -> str:
             filePath = './tmp/{}-tts.mp3'.format(program.utils.getCurrentFileNumberCount())
@@ -158,6 +177,11 @@ program.utils.log('Getting {} posts from the {} section of r/{}'.format(program.
 imagePathsForRedditPosts = program.reddit.downloadImagePostsFromReddit(program.presets.subreddit, program.presets.limit, False, program.presets.sortby)
 program.utils.log('Got {} posts from the subreddit.'.format(len(imagePathsForRedditPosts)))
 
+#edit the image files
+for each in imagePathsForRedditPosts:
+    program.utils.log('Editing {}.'.format(each[0]))
+    program.images.makeImageFrame(each[0], each[1])
+
 #make tts files for the titles
 ttsPaths = []
 for each in range(len(imagePathsForRedditPosts)):
@@ -167,16 +191,18 @@ for each in range(len(imagePathsForRedditPosts)):
 program.utils.log('TTS paths: {}'.format(str(ttsPaths)))
 
 #make the tts files longer and add images to them
-minTTSFileDurationSeconds = 5.0
 videoFilePaths = []
 for each in range(len(ttsPaths)):
     program.utils.log('Editing TTS file {}/{}.'.format(str(each + 1), str(len(ttsPaths))))
     filePath1 = './tmp/{}-tts-enlongated.mp4'.format(program.utils.getCurrentFileNumberCount())
-    videoClip = moviepy.editor.VideoFileClip(imagePathsForRedditPosts[each][0])
-    videoClip = videoClip.set_audio(ttsPaths[each])
-    #if (videoClip.duration < minTTSFileDurationSeconds):
-    #    videoClip = videoClip.set_duration(minTTSFileDurationSeconds)
-    videoClip.write_videofile(filePath1)
+    videoFilePaths.append(filePath1)
+    os.system('ffmpeg.exe -loop 1 -i {} -i {} -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest {}'.format(str(imagePathsForRedditPosts[each][0]), str(ttsPaths[each]), str(filePath1)))
+
+videoFileList = []
+for each in videoFilePaths:
+    videoFileList.append(moviepy.editor.VideoFileClip(each))
+finalVideo = moviepy.editor.concatenate_videoclips(videoFileList)
+finalVideo.write_videofile('./outputs/render-{}.mp4'.format(program.utils.getCurrentFileNumberCount()))
 
 #delete all the temporary files
-#shutil.rmtree('tmp')
+shutil.rmtree('tmp')
