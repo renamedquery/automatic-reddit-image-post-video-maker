@@ -7,10 +7,7 @@ parser.add_argument('--subreddit', dest = 'subreddit', required = True, help = '
 parser.add_argument('--limit', dest = 'limit', required = True, help = 'The amount of posts that will be in the video. EXAMPLE: "10".')
 parser.add_argument('--sortby', dest = 'sortby', required = True, help = 'What page the posts will be pulled from. Options are ["hot", "new", "rising", "controversial", "top"].')
 parser.add_argument('--allow-nsfw', dest = 'allow_nsfw', required = False, help = 'Whether or not nsfw content will be allowed in the video. Options are ["y", "n"].')
-try:
-    arguments = parser.parse_args()
-except:
-    input('\nRun this program using the terminal. Dont just click on it and then run it.')
+arguments = parser.parse_args()
 
 class program:
     class utils:
